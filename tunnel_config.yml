@@ -1,0 +1,8 @@
+urL: http://localhost:20512
+protocol: http2
+tunnel: bot-tunnel
+credentials-file: /home/toast/.cloudflared/3d204084-ca38-4504-8c83-419908a72cf4.json
+ingress:
+  - hostname: bot.mediumblue.space
+    service: http://localhost:20512
+  - service: http_status:404
