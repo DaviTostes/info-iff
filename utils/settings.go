@@ -6,10 +6,10 @@ import (
 )
 
 type Settings struct {
-	Bot_token string `json:"bot_token"`
-	Url       string `json:"url"`
-	Model     string `json:"model"`
-	Db        string `json:"db"`
+	Bot_token   string `json:"bot_token"`
+	Url         string `json:"url"`
+	Model       string `json:"model"`
+	Db          string `json:"db"`
 }
 
 func GetSettings() (Settings, error) {

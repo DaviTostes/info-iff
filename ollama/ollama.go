@@ -8,7 +8,15 @@ import (
 	"iffbot/db"
 	"io"
 	"net/http"
+	"regexp"
 )
+
+type Response struct {
+	Model      string `json:"model"`
+	Created_at string `json:"created_at"`
+	Response   string `json:"response"`
+	Done       bool   `json:"done"`
+}
 
 type ResponseChat struct {
 	Model      string      `json:"model"`
@@ -22,10 +30,10 @@ type MessageChat struct {
 	Content string `json:"content"`
 }
 
-func Generate(model, context, userMessage string, messages []db.Message) (string, error) {
+func Generate(model, userPrompt string, messages []db.Message) (string, error) {
 	systemMessage := MessageChat{
 		Role:    "system",
-		Content: GetPremadePrompt(context),
+		Content: GetPremadePrompt(),
 	}
 
 	chatMessages := []MessageChat{systemMessage}
@@ -38,7 +46,7 @@ func Generate(model, context, userMessage string, messages []db.Message) (string
 
 	chatMessages = append(chatMessages, MessageChat{
 		Role:    "user",
-		Content: userMessage,
+		Content: userPrompt,
 	})
 
 	fmt.Println(chatMessages)
@@ -70,35 +78,18 @@ func Generate(model, context, userMessage string, messages []db.Message) (string
 		return "", err
 	}
 
-	return resp.Message.Content, err
+	re := regexp.MustCompile(`(?s)<think>.*?</think>`)
+	output := re.ReplaceAllString(resp.Message.Content, "")
+
+	return output, err
 }
 
-func GetPremadePrompt(context string) string {
+func GetPremadePrompt() string {
 	return fmt.Sprintf(`
-Você é InfoIFF, um assistente virtual acolhedor e simpático que responde dúvidas sobre o Instituto Federal Fluminense (IFF) — especialmente o campus Itaperuna.
-
-Fale como se estivesse em um chat no WhatsApp: com leveza, clareza e vontade real de ajudar.
-
----
-
-**Contexto útil para as respostas:**
-%s
-
----
-
-**Regras de comportamento:**
-- Fale de forma natural, como uma pessoa prestativa e educada.
-- Seja direto ao ponto, sem enrolar, mas sempre gentil.
-- Nao invente informacoes, apenas responda com as que estao no contexto
-- Se o contexto for insuficiente para responder a pergunta, tente perguntar para o usuario por mais informacoes
-- Se o contexto for extenso, filtre e use apenas o que for relevante para responder.
-- Mantenha as respostas ate 3 paragrafos, nao crie textos muito extensos.
-
-Seu objetivo é ser claro, útil e acolhedor — sem parecer um robô e sem exageros.
-Mantenha o foco da conversa no IFF, nao va para outros assuntos mesmo se o usuario requisitar.
-
----
-`, context)
+você é um assistente que responde dúvidas sobre o IFF campus Itaperuna. 
+você recebera um contexto e uma pergunta do usuario.
+responda apenas com base neste contexto, nao invente informacoes.
+`)
 }
 
 func GetEmbedding(text string) ([]float64, error) {

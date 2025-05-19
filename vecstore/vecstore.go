@@ -5,6 +5,7 @@ import (
 	"iffbot/db"
 	"math"
 	"sort"
+	"strings"
 )
 
 type ScoredDoc struct {
@@ -13,6 +14,14 @@ type ScoredDoc struct {
 }
 
 func cosineSim(a, b []float64) float64 {
+	if len(a) == 0 || len(b) == 0 {
+		return 0
+	}
+
+	if len(a) != len(b) {
+		return 0
+	}
+
 	var dot, normA, normB float64
 	for i := range a {
 		dot += a[i] * b[i]
@@ -24,6 +33,7 @@ func cosineSim(a, b []float64) float64 {
 
 func FindTopKRelevant(
 	docs []db.Embedding,
+	query string,
 	queryEmbedding []float64,
 	topK int,
 	minScore float64,
@@ -47,6 +57,8 @@ func FindTopKRelevant(
 		return []db.Embedding{}
 	}
 
+	scoredDocs = heuristicRerank(scoredDocs, query)
+
 	sort.Slice(scoredDocs, func(i, j int) bool {
 		return scoredDocs[i].Score > scoredDocs[j].Score
 	})
@@ -61,4 +73,22 @@ func FindTopKRelevant(
 	}
 
 	return result
+}
+
+func heuristicRerank(results []ScoredDoc, query string) []ScoredDoc {
+	queryTerms := strings.Fields(strings.ToLower(query))
+
+	for i := range results {
+		text := strings.ToLower(results[i].Doc.Text)
+		for _, term := range queryTerms {
+			if strings.Contains(text, term) {
+				results[i].Score += 0.05
+			}
+		}
+	}
+
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Score > results[j].Score
+	})
+	return results
 }

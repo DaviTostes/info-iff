@@ -22,7 +22,12 @@ func CreateOrGetChat(telID uint) (Chat, error) {
 
 	var chat Chat
 
-	result := db.Preload("Messages").Preload("Embeddings").First(&chat, "tel_id = ?", telID)
+	result := db.
+		Preload("Messages", func(db *gorm.DB) *gorm.DB {
+			return db.Order("created ASC")
+		}).
+		Preload("Embeddings").
+		First(&chat, "tel_id = ?", telID)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		chat = Chat{TelID: telID}
 

@@ -171,23 +171,31 @@ func HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	topDocs := vecstore.FindTopKRelevant(diferEmbeddings, userEmb, 5, 0.60)
+	topDocs := vecstore.FindTopKRelevant(
+		diferEmbeddings,
+		webhookData.Message.Text,
+		userEmb,
+		6,
+		0.70,
+	)
 
 	var context strings.Builder
 	for _, d := range topDocs {
 		context.WriteString(d.Text + "\n")
 		db.AddChatEmbedding(chat.ID, d.ID)
 	}
-	for _, d := range chat.Embeddings {
-		context.WriteString(d.Text + "\n")
+	if err != nil {
+		http.Error(w, "Failed to generate completion", http.StatusInternalServerError)
+		return
 	}
 
-	completion, err := ollama.Generate(
-		settings.Model,
+	userPrompt := fmt.Sprintf(
+		"Contexto Inicio\n%sContexto Fim\nPergunta\n%s",
 		context.String(),
 		webhookData.Message.Text,
-		chat.Messages,
 	)
+
+	completion, err := ollama.Generate(settings.Model, userPrompt, chat.Messages)
 	if err != nil {
 		http.Error(w, "Failed to generate completion", http.StatusInternalServerError)
 		return
@@ -208,7 +216,7 @@ func HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db.CreateMessage(chat.ID, webhookData.Message.Text, "user")
+	db.CreateMessage(chat.ID, userPrompt, "user")
 	db.CreateMessage(chat.ID, completion, "assistant")
 
 	w.Header().Set("Content-Type", "application/json")
